@@ -22,7 +22,7 @@ final class DemosViewController: UIViewController, ListAdapterDataSource {
     }()
     let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
 
-    let demos: [DemoItem] = [
+    var demos: [DemoItem] = [
         DemoItem(name: "Tail Loading",
                  controllerClass: LoadMoreViewController.self),
         DemoItem(name: "Search Autocomplete",
@@ -73,6 +73,7 @@ final class DemosViewController: UIViewController, ListAdapterDataSource {
         view.addSubview(collectionView)
         adapter.collectionView = collectionView
         adapter.dataSource = self
+        adapter.delegate = self;
     }
 
     override func viewDidLayoutSubviews() {
@@ -83,15 +84,43 @@ final class DemosViewController: UIViewController, ListAdapterDataSource {
     // MARK: ListAdapterDataSource
 
     func objects(for listAdapter: ListAdapter) -> [ListDiffable] {
+        // 告诉 IG 有多少个原始 object
         return demos
     }
 
     func listAdapter(_ listAdapter: ListAdapter, sectionControllerFor object: Any) -> ListSectionController {
+        // object 怎么转为 controller
         return DemoSectionController()
     }
 
     func emptyView(for listAdapter: ListAdapter) -> UIView? {
         return nil
+    }
+    
+    func loadMore()  {
+        var demos = self.demos;
+        var newDemos = (0...demos.count).map {
+            return DemoItem(name: "Load More \($0)",
+                controllerClass: LoadMoreViewController.self)
+        }
+        demos.append(contentsOf: newDemos)
+        self.demos = demos
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.adapter.reloadObjects(self.demos)
+        }
+    }
+}
+
+extension DemosViewController : IGListAdapterDelegate {
+    func listAdapter(_ listAdapter: ListAdapter, willDisplay object: Any, at index: Int) {
+        print("obj willDisplay :\(object) idx: \(index)")
+        if index > demos.count - 2 {
+            self.loadMore()
+        }
+    }
+    func listAdapter(_ listAdapter: ListAdapter, didEndDisplaying object: Any, at index: Int) {
+        print("obj didEndDisplaying :\(object) idx: \(index)")
     }
 
 }
