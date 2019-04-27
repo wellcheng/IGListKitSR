@@ -19,10 +19,12 @@ NS_ASSUME_NONNULL_BEGIN
 NS_SWIFT_NAME(ListDiffOption)
 typedef NS_ENUM(NSInteger, IGListDiffOption) {
     /**
+     指针相等性
      Compare objects using pointer personality.
      */
     IGListDiffPointerPersonality,
     /**
+     抽象业务相等性
      Compare objects using `-[IGListDiffable isEqualToDiffableObject:]`.
      */
     IGListDiffEquality
@@ -30,7 +32,8 @@ typedef NS_ENUM(NSInteger, IGListDiffOption) {
 
 /**
  Creates a diff using indexes between two collections.
-
+ 给定两组数据源，返回不同
+ 
  @param oldArray The old objects to diff against.
  @param newArray The new objects.
  @param option An option on how to compare objects.
