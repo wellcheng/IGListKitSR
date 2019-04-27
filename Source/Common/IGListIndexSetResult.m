@@ -48,6 +48,10 @@
     NSArray<IGListMoveIndex *> *moves = self.moves;
     NSMutableArray<IGListMoveIndex *> *filteredMoves = [moves mutableCopy];
 
+    /** 如果一个 idx 既在 update 中，又在 move.from  中
+     *  那么可以解释为，这个 idx 数据发生了变化，同时还需要移动到另外一个地方
+     *  那么就直接将 old 数据删除，同时在移动到的位置插入一个新数据
+     */
     // convert all update+move to delete+insert
     const NSInteger moveCount = moves.count;
     for (NSInteger i = moveCount - 1; i >= 0; i--) {
@@ -59,7 +63,10 @@
             [inserts addIndex:move.to];
         }
     }
-
+    /**
+     *  同样，如果 old map 中 idx 需要更新，那么就从 old 中删除，插入到 new 中
+     *  将更新操作分解为 删除 + 插入
+     */
     // iterate all new identifiers. if its index is updated, delete from the old index and insert the new index
     for (id<NSObject> key in [_oldIndexMap keyEnumerator]) {
         const NSInteger index = [[_oldIndexMap objectForKey:key] integerValue];

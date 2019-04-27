@@ -18,10 +18,13 @@ NS_ASSUME_NONNULL_BEGIN
  and performs cleanup on init in order to perform a crash-free
  update via `-[UICollectionView performBatchUpdates:completion:]`.
  */
+
+// 是一个 类似 context 的封装类，包装了 collection view 一次更新需要的 增 删 修改
 IGLK_SUBCLASSING_RESTRICTED
 NS_SWIFT_NAME(ListBatchUpdateData)
 @interface IGListBatchUpdateData : NSObject
 
+#pragma mark - Section 层面的删除操作
 /**
  Section insert indexes.
  */
@@ -37,6 +40,7 @@ NS_SWIFT_NAME(ListBatchUpdateData)
  */
 @property (nonatomic, strong, readonly) NSSet<IGListMoveIndex *> *moveSections;
 
+#pragma mark - Item 层面的删除操作
 /**
  Item insert index paths.
  */

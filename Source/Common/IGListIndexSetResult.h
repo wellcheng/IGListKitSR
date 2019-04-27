@@ -15,6 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
  A result object returned when diffing with indexes.
  */
 NS_SWIFT_NAME(ListIndexSetResult)
+
+
+/**
+ 封装了 增加 删除 更新 移动的 index
+ */
 @interface IGListIndexSetResult : NSObject
 
 /**

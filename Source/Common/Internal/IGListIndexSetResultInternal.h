@@ -13,6 +13,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface IGListIndexSetResult()
 
+
+/**
+ 输入一堆删除、插入、更新、移动操作，内部经过解析
+ 最终可以转换为精简后的 Self
+ 主要是部分 cell 的收据既发生了 update ，又发生了 move，需要拆解为 delete + insert
+ */
 - (instancetype)initWithInserts:(NSIndexSet *)inserts
                         deletes:(NSIndexSet *)deletes
                         updates:(NSIndexSet *)updates

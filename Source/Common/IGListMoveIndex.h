@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  An object representing a move between indexes.
+ 封装了移动操作所需数据的一个 class
  */
 NS_SWIFT_NAME(ListMoveIndex)
 @interface IGListMoveIndex : NSObject

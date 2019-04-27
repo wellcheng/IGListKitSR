@@ -324,6 +324,15 @@ static NSArray<NSIndexPath *> *convertSectionReloadToItemUpdates(NSIndexSet *sec
     return [updates copy];
 }
 
+/**
+ collection 的真正刷新工作
+
+ @param collectionView 并没有对 collection。做特殊限制，只要是系统的就行。因此对 collection view 的调用，是可以通过子类重载的
+ @param diffResult 
+ @param batchUpdates <#batchUpdates description#>
+ @param fromObjects <#fromObjects description#>
+ @return <#return value description#>
+ */
 - (IGListBatchUpdateData *)_flushCollectionView:(UICollectionView *)collectionView
                                 withDiffResult:(IGListIndexSetResult *)diffResult
                                   batchUpdates:(IGListBatchUpdates *)batchUpdates
@@ -382,6 +391,7 @@ static NSArray<NSIndexPath *> *convertSectionReloadToItemUpdates(NSIndexSet *sec
     [itemDeletes addObjectsFromArray:[reloadDeletePaths allObjects]];
     [itemInserts addObjectsFromArray:[reloadInsertPaths allObjects]];
 
+    // 这里组装完成本次数据更新 要导致 view 的变动
     IGListBatchUpdateData *updateData = [[IGListBatchUpdateData alloc] initWithInsertSections:inserts
                                                                                deleteSections:deletes
                                                                                  moveSections:moves
