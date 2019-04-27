@@ -39,16 +39,26 @@
 
 #pragma mark - Init
 
-- (instancetype)initWithUpdater:(id <IGListUpdatingDelegate>)updater
+- (instancetype)initWithUpdater:(id <IGListUpdatingDelegate>)updater // updater 管理 IGList 相关的更新等操作
                  viewController:(UIViewController *)viewController
                workingRangeSize:(NSInteger)workingRangeSize {
     IGAssertMainThread();
     IGParameterAssert(updater);
-
+    
+    // IG 实例的初始化
     if (self = [super init]) {
+        // NSPointerFunctions 可以持有一组 NSPointerFunctionsOptions ，方便传递
         NSPointerFunctions *keyFunctions = [updater objectLookupPointerFunctions];
         NSPointerFunctions *valueFunctions = [NSPointerFunctions pointerFunctionsWithOptions:NSPointerFunctionsStrongMemory];
+        
+        // Table 的创建是根据不同的内存管理方式
+        // KeyFunctions 用来管理 key 数组，valueFunctions 用来管理 value
+        // KeyFunctions 由 updater 本身提供，value 默认使用 strong 类型
+        // TODO 这里为什么要区分？
         NSMapTable *table = [[NSMapTable alloc] initWithKeyPointerFunctions:keyFunctions valuePointerFunctions:valueFunctions capacity:0];
+        
+        
+        // IGListSectionMap 存储  collectionView 的 section 和 data 之间的映射关系
         _sectionMap = [[IGListSectionMap alloc] initWithMapTable:table];
 
         _displayHandler = [IGListDisplayHandler new];
@@ -77,14 +87,19 @@
     return _collectionView;
 }
 
+// set CollectionView 之后才开始运行
 - (void)setCollectionView:(UICollectionView *)collectionView {
     IGAssertMainThread();
 
     // if collection view has been used by a different list adapter, treat it as if we were using a new collection view
     // this happens when embedding a UICollectionView inside a UICollectionViewCell that is reused
+    // 边界 case
     if (_collectionView != collectionView || _collectionView.dataSource != self) {
         // if the collection view was being used with another IGListAdapter (e.g. cell reuse)
         // destroy the previous association so the old adapter doesn't update the wrong collection view
+        
+        // 处理 IGList 的嵌套逻辑，比如 Cell 中有一个 collectionViewCell
+        // globalCollectionViewAdapterMap 会存储全局的 adapter
         static NSMapTable<UICollectionView *, IGListAdapter *> *globalCollectionViewAdapterMap = nil;
         if (globalCollectionViewAdapterMap == nil) {
             globalCollectionViewAdapterMap = [NSMapTable weakToWeakObjectsMapTable];
@@ -99,7 +114,9 @@
         _registeredNibNames = [NSMutableSet new];
         _registeredSupplementaryViewIdentifiers = [NSMutableSet new];
         _registeredSupplementaryViewNibNames = [NSMutableSet new];
-
+        
+        // const 防止被修改
+        // 当前的 adapter 是不是之前已经处理过 collectionView
         const BOOL settingFirstCollectionView = _collectionView == nil;
 
         _collectionView = collectionView;
@@ -108,8 +125,10 @@
         if (@available(iOS 10.0, tvOS 10, *)) {
             _collectionView.prefetchingEnabled = NO;
         }
-
+        
+        // 给 layout 一个关联属性，来绑定 self
         [_collectionView.collectionViewLayout ig_hijackLayoutInteractiveReorderingMethodForAdapter:self];
+        // 触发重新 Layout
         [_collectionView.collectionViewLayout invalidateLayout];
 
         [self _updateCollectionViewDelegate];
@@ -130,6 +149,7 @@
 }
 
 // reset and configure the delegate proxy whenever this property is set
+// 支持从外部注入 delegate
 - (void)setCollectionViewDelegate:(id<UICollectionViewDelegate>)collectionViewDelegate {
     IGAssertMainThread();
     IGAssert(![collectionViewDelegate conformsToProtocol:@protocol(UICollectionViewDelegateFlowLayout)],
@@ -141,6 +161,7 @@
     }
 }
 
+// 支持外部注入 scrollview delegate，相当于一个 wrapper
 - (void)setScrollViewDelegate:(id<UIScrollViewDelegate>)scrollViewDelegate {
     IGAssertMainThread();
 
@@ -150,6 +171,7 @@
     }
 }
 
+// IGList 去重逻辑
 - (void)_updateAfterPublicSettingsChange {
     id<IGListAdapterDataSource> dataSource = _dataSource;
     if (_collectionView != nil && dataSource != nil) {
@@ -177,7 +199,7 @@
 
 
 #pragma mark - Scrolling
-
+// IG 是如何处理滑动操作的
 - (void)scrollToObject:(id)object
     supplementaryKinds:(NSArray<NSString *> *)supplementaryKinds
        scrollDirection:(UICollectionViewScrollDirection)scrollDirection
@@ -227,7 +249,8 @@
         }
         attributes = supplementaryAttributes;
     }
-
+    
+    // 通过获取要滑动到的 section ，来确定 section 的位置，也就是 range
     CGFloat offsetMin = 0.0;
     CGFloat offsetMax = 0.0;
     for (UICollectionViewLayoutAttributes *attribute in attributes) {
@@ -310,7 +333,9 @@
             break;
         }
     }
-
+    
+    // 通过计算 contentOffset 进行滑动
+    // 因为可以获取到具体位置的 attributes ，也就是拿到了 frame 因此是可以控制细节上的滑动的
     [collectionView setContentOffset:contentOffset animated:animated];
 }
 
@@ -663,6 +688,8 @@
     [self _updateBackgroundViewShouldHide:itemCount > 0];
 }
 
+// 更新 collection view 的 background view，是通过 empty view 获取的
+// 会根据 object 的数量来决定是不是要隐藏
 - (void)_updateBackgroundViewShouldHide:(BOOL)shouldHide {
     if (self.isInUpdateBlock) {
         return; // will be called again when update block completes
@@ -678,6 +705,7 @@
     _collectionView.backgroundView.hidden = shouldHide;
 }
 
+// 检查是不是所有的 section empty，其实就是检测整个 collection view cell 时否为空
 - (BOOL)_itemCountIsZero {
     __block BOOL isZero = YES;
     [self.sectionMap enumerateUsingBlock:^(id  _Nonnull object, IGListSectionController * _Nonnull sectionController, NSInteger section, BOOL * _Nonnull stop) {

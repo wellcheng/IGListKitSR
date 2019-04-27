@@ -19,6 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
  constant-time lookups O(1).
 
  IGListSectionMap is a mutable object and does not guarantee thread safety.
+ 
+ SectionMap ： 1、存储 section 和 controller 的对应，存储 section 和业务 Object 之间的关系
+ 只负责存储、查找、更新逻辑
  */
 IGLK_SUBCLASSING_RESTRICTED
 @interface IGListSectionMap : NSObject <NSCopying>
