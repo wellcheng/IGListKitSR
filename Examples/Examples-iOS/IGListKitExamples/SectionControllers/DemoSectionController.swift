@@ -52,10 +52,12 @@ final class DemoSectionController: ListSectionController {
     private var object: DemoItem?
 
     override func sizeForItem(at index: Int) -> CGSize {
+        // 通过 context 获取容器的 containerSize
         return CGSize(width: collectionContext!.containerSize.width, height: 55)
     }
 
     override func cellForItem(at index: Int) -> UICollectionViewCell {
+        // cxt 默认就是 adapter
         guard let cell = collectionContext?.dequeueReusableCell(of: LabelCell.self, for: self, at: index) as? LabelCell else {
             fatalError()
         }
