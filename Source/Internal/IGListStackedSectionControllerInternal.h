@@ -9,6 +9,10 @@
 
 #import "IGListStackedSectionController.h"
 
+
+/**
+ 这个就是将原来 section 中的每个一个 cell 都抽出来，然后用一个新的 section 包起来，最终就是许多个 section ，每个 section 一个 cell
+ */
 @interface IGListStackedSectionController ()
 <
 IGListBatchContext,
