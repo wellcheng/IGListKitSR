@@ -15,7 +15,23 @@
 #import <IGListKit/IGListTransitionDelegate.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
+/**
+ section controller 作为 section 部分的数据控制器
+ 1、提供 section 对应的 items 数量
+ 2、提供 section 某个 item 对应的 size
+ 3、提供 section 某个 item 对应的 cell
+ 4、在 section 对应的数据结构发生变化时，通知到 section controller
+ 5、在 section 的点选状态变化时，通知到 section controller
+ 6、控制 item 是否能够 move，操作 item 的实际移动
+ 7、持有 section 所在的 view controller，方便跳转操作
+ 8、持有 collectionCxt
+ 9、其他一些 layout 属性：minimumLineSpacing minimumInteritemSpacing
+ 10、持有 supplementary delegate，来实现 header footer
+ 11、持有 display delegate，来通知具体的 display 状态
+ 12、持有 workingRange delegate，来通知时否进入工作区域
+ 13、持有 scroll delegate，来通知滑动事件
+ 14、持有 transition delegate，来通知 cell 自定义动画
+ */
 /**
  The base class for section controllers used in a list. This class is intended to be subclassed.
  */
