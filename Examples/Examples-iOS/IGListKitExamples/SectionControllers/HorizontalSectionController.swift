@@ -18,7 +18,8 @@ import UIKit
 final class HorizontalSectionController: ListSectionController, ListAdapterDataSource {
 
     private var number: Int?
-
+    
+    // 如果 section 中嵌套 collection View ，那么 section 内部要维护一个 adapter
     lazy var adapter: ListAdapter = {
         let adapter = ListAdapter(updater: ListAdapterUpdater(),
                                   viewController: self.viewController)
@@ -36,6 +37,7 @@ final class HorizontalSectionController: ListSectionController, ListAdapterDataS
                                                                 at: index) as? EmbeddedCollectionViewCell else {
                                                                     fatalError()
         }
+        // 将 cell 的 collection view 绑定到 adapter 上
         adapter.collectionView = cell.collectionView
         return cell
     }
