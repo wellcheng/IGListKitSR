@@ -67,6 +67,9 @@ NS_SWIFT_NAME(ListSingleSectionControllerDelegate)
 @end
 
 /**
+ Single Section Controller 是一种最简单的 Section Controller，它只有一个 Cell，在初始化的时候，就将 Cell 的 config 和 size 通过 block
+ 传入，非常适合用于设置项等。
+ 
  This section controller is meant to make building simple, single-cell lists easier. By providing the type of cell, a block
  to configure the cell, and a block to return the size of a cell, you can use an `IGListAdapter`-powered list with a
  simpler architecture.

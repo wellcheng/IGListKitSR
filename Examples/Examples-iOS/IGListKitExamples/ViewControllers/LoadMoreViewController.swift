@@ -69,6 +69,7 @@ final class LoadMoreViewController: UIViewController, ListAdapterDataSource, UIS
 
         let distance = scrollView.contentSize.height - (targetContentOffset.pointee.y + scrollView.bounds.height)
         if !loading && distance < 200 {
+            // set to loading and reload cells, leading to add loading cell
             loading = true
             adapter.performUpdates(animated: true, completion: nil)
             DispatchQueue.global(qos: .default).async {

@@ -44,7 +44,6 @@ extension DemoItem: ListDiffable {
         guard let object = object as? DemoItem else { return false }
         return controllerClass == object.controllerClass && controllerIdentifier == object.controllerIdentifier
     }
-
 }
 
 final class DemoSectionController: ListSectionController {

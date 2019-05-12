@@ -17,11 +17,13 @@ import UIKit
 
 func spinnerSectionController() -> ListSingleSectionController {
     let configureBlock = { (item: Any, cell: UICollectionViewCell) in
+        // cell 只要一展现默认就是 start animation
         guard let cell = cell as? SpinnerCell else { return }
         cell.activityIndicator.startAnimating()
     }
 
     let sizeBlock = { (item: Any, context: ListCollectionContext?) -> CGSize in
+        // 写死一个默认的 cell size
         guard let context = context else { return .zero }
         return CGSize(width: context.containerSize.width, height: 100)
     }

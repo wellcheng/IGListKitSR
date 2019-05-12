@@ -74,7 +74,7 @@ final class DemosViewController: UIViewController, ListAdapterDataSource {
         adapter.collectionView = collectionView
         adapter.dataSource = self
     }
-
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         collectionView.frame = view.bounds
