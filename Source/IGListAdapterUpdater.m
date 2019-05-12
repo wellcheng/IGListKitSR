@@ -42,27 +42,33 @@
     || self.toObjectsBlock != nil;
 }
 
+// 执行一次全量更新
 - (void)performReloadDataWithCollectionViewBlock:(IGListCollectionViewBlock)collectionViewBlock {
     IGAssertMainThread();
     
     id<IGListAdapterUpdaterDelegate> delegate = self.delegate;
     void (^reloadUpdates)(void) = self.reloadUpdates;
+    // batchUpdates 标记了很多需要具体更新的 index
     IGListBatchUpdates *batchUpdates = self.batchUpdates;
+    
     NSMutableArray *completionBlocks = [self.completionBlocks mutableCopy];
-
+    
+    // clear 所有和中间状态相关的变量
     [self cleanStateBeforeUpdates];
-
+    
+    // 将所有的 completion 的调用集合到一起，放在一个 block 中
     void (^executeCompletionBlocks)(BOOL) = ^(BOOL finished) {
         for (IGListUpdatingCompletion block in completionBlocks) {
             block(finished);
         }
-
+        // 既然 update 完成了，那么就需要将状态设置为 idle ？？
         self.state = IGListBatchUpdateStateIdle;
     };
 
     // bail early if the collection view has been deallocated in the time since the update was queued
     UICollectionView *collectionView = collectionViewBlock();
     if (collectionView == nil) {
+        // 处理在准备异步 update 时，collection view 已经被释放的 case
         [self _cleanStateAfterUpdates];
         executeCompletionBlocks(NO);
         return;
@@ -72,13 +78,14 @@
     self.state = IGListBatchUpdateStateExecutingBatchUpdateBlock;
 
     if (reloadUpdates) {
-        reloadUpdates();
+        reloadUpdates();    // update 一般都是真正的去更新数据源
     }
 
     // execute all stored item update blocks even if we are just calling reloadData. the actual collection view
     // mutations will be discarded, but clients are encouraged to put their actual /data/ mutations inside the
     // update block as well, so if we don't execute the block the changes will never happen
     for (IGListItemUpdateBlock itemUpdateBlock in batchUpdates.itemUpdateBlocks) {
+        // reload 相当于更新了所有的 item， invoke block 表示正在更新
         itemUpdateBlock();
     }
 
@@ -89,7 +96,8 @@
     self.state = IGListBatchUpdateStateExecutedBatchUpdateBlock;
 
     [self _cleanStateAfterUpdates];
-
+    
+    // 直接全量更新 collection view
     [delegate listAdapterUpdater:self willReloadDataWithCollectionView:collectionView];
     [collectionView reloadData];
     [collectionView.collectionViewLayout invalidateLayout];
@@ -98,12 +106,13 @@
 
     executeCompletionBlocks(YES);
 }
-
+// queued 一个批量更新操作
 - (void)performBatchUpdatesWithCollectionViewBlock:(IGListCollectionViewBlock)collectionViewBlock {
     IGAssertMainThread();
     IGAssert(self.state == IGListBatchUpdateStateIdle, @"Should not call batch updates when state isn't idle");
 
     // create local variables so we can immediately clean our state but pass these items into the batch update block
+    // 使用 local 变量存储当前的 context
     id<IGListAdapterUpdaterDelegate> delegate = self.delegate;
     NSArray *fromObjects = [self.fromObjects copy];
     IGListToObjectBlock toObjectsBlock = [self.toObjectsBlock copy];
@@ -113,9 +122,11 @@
     IGListBatchUpdates *batchUpdates = self.batchUpdates;
 
     // clean up all state so that new updates can be coalesced while the current update is in flight
+    // 然后将 self 的属性清空，避免本次 update 时依赖的属性被污染
     [self cleanStateBeforeUpdates];
 
     void (^executeCompletionBlocks)(BOOL) = ^(BOOL finished) {
+        // update 真正结束时调用
         self.applyingUpdateData = nil;
         self.state = IGListBatchUpdateStateIdle;
 
@@ -132,6 +143,7 @@
         return;
     }
     
+    // 得到真正更新后的数据源
     NSArray *toObjects = nil;
     if (toObjectsBlock != nil) {
         toObjects = objectsWithDuplicateIdentifiersRemoved(toObjectsBlock());
@@ -145,7 +157,9 @@
     }
 #endif
 
+    // 执行更新操作
     void (^executeUpdateBlocks)(void) = ^{
+        // 标记开始 update
         self.state = IGListBatchUpdateStateExecutingBatchUpdateBlock;
 
         // run the update block so that the adapter can set its items. this makes sure that just before the update is
@@ -168,7 +182,8 @@
 
         self.state = IGListBatchUpdateStateExecutedBatchUpdateBlock;
     };
-
+    
+    // 更新失败
     void (^reloadDataFallback)(void) = ^{
         executeUpdateBlocks();
         [self _cleanStateAfterUpdates];
@@ -185,35 +200,44 @@
     // reload data, execute completion blocks, and get outta here
     const BOOL iOS83OrLater = (NSFoundationVersionNumber >= NSFoundationVersionNumber_iOS_8_3);
     if (iOS83OrLater && self.allowsBackgroundReloading && collectionView.window == nil) {
+        // 8.3 之后如果可以后台更新的话，就将本次的更新后数据源保存起来
         [self _beginPerformBatchUpdatesToObjects:toObjects];
+        // 宣布更新失败
         reloadDataFallback();
         return;
     }
 
     // disables multiple performBatchUpdates: from happening at the same time
+    // 表示开始进行 update，保存起来中间状态，防止同一时间进行刷新
     [self _beginPerformBatchUpdatesToObjects:toObjects];
 
     const IGListExperiment experiments = self.experiments;
 
+    // Diff block
     IGListIndexSetResult *(^performDiff)(void) = ^{
         return IGListDiffExperiment(fromObjects, toObjects, IGListDiffEquality, experiments);
     };
 
     // block executed in the first param block of -[UICollectionView performBatchUpdates:completion:]
+    // 执行真正的 update index 操作
     void (^batchUpdatesBlock)(IGListIndexSetResult *result) = ^(IGListIndexSetResult *result){
+        // 执行更新操作
         executeUpdateBlocks();
         
+        // 计算得到要更新的所有操作
         self.applyingUpdateData = [self _flushCollectionView:collectionView
                                               withDiffResult:result
                                                 batchUpdates:self.batchUpdates
                                                  fromObjects:fromObjects];
         
         [self _cleanStateAfterUpdates];
+        // 执行所有的更新操作
         [self _performBatchUpdatesItemBlockApplied];
     };
 
     // block used as the second param of -[UICollectionView performBatchUpdates:completion:]
     void (^batchUpdatesCompletionBlock)(BOOL) = ^(BOOL finished) {
+        // 
         IGListBatchUpdateData *oldApplyingUpdateData = self.applyingUpdateData;
         executeCompletionBlocks(finished);
 
@@ -225,10 +249,13 @@
     };
 
     // block that executes the batch update and exception handling
+    // 最终调用这个 block 来更新 diff 之后的结果
     void (^performUpdate)(IGListIndexSetResult *) = ^(IGListIndexSetResult *result){
+        // 这里为什么要先计算下布局？应该是为了之后的移动操作之类的吧
         [collectionView layoutIfNeeded];
 
         @try {
+            // Notifies the delegate will apply batch update
             [delegate  listAdapterUpdater:self
 willPerformBatchUpdatesWithCollectionView:collectionView
                               fromObjects:fromObjects
@@ -236,10 +263,14 @@ willPerformBatchUpdatesWithCollectionView:collectionView
                        listIndexSetResult:result];
             if (collectionView.dataSource == nil) {
                 // If the data source is nil, we should not call any collection view update.
+                // 如果数据源不存在，直接 cancel 掉好了
                 batchUpdatesCompletionBlock(NO);
             } else if (result.changeCount > 100 && IGListExperimentEnabled(experiments, IGListExperimentReloadDataFallback)) {
+                // 如果更新的数量超过了 100 ，但是没有开启 reload fallback 实验，直接失败
                 reloadDataFallback();
-            } else if (animated) {
+            }
+            // 在系统的 block 中执行真正的 index 更新操作
+            else if (animated) {
                 [collectionView performBatchUpdates:^{
                     batchUpdatesBlock(result);
                 } completion:batchUpdatesCompletionBlock];
@@ -265,6 +296,7 @@ willPerformBatchUpdatesWithCollectionView:collectionView
         }
     };
 
+    // 根据时否开启了后台更新实验，决定 queue
     dispatch_queue_t asyncQueue = nil;
     if (IGListExperimentEnabled(experiments, IGListExperimentBackgroundDiffing)) {
         asyncQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
@@ -274,6 +306,7 @@ willPerformBatchUpdatesWithCollectionView:collectionView
         }
         asyncQueue = _backgroundUpdateQueue;
     }
+    // 根据 queue ，判断时否要异步操作。得到 diff 结果，然后开始用 diff result 进行 update
     if (asyncQueue) {
         dispatch_async(asyncQueue, ^{
             IGListIndexSetResult *result = performDiff();
@@ -329,9 +362,9 @@ static NSArray<NSIndexPath *> *convertSectionReloadToItemUpdates(NSIndexSet *sec
 
  @param collectionView 并没有对 collection。做特殊限制，只要是系统的就行。因此对 collection view 的调用，是可以通过子类重载的
  @param diffResult 
- @param batchUpdates <#batchUpdates description#>
- @param fromObjects <#fromObjects description#>
- @return <#return value description#>
+ @param batchUpdates
+ @param fromObjects
+ @return
  */
 - (IGListBatchUpdateData *)_flushCollectionView:(UICollectionView *)collectionView
                                 withDiffResult:(IGListIndexSetResult *)diffResult
@@ -444,12 +477,16 @@ static NSArray<NSIndexPath *> *convertSectionReloadToItemUpdates(NSIndexSet *sec
     // (diffing, etc) is done on main. dispatch_async does not garauntee a full runloop turn will pass though.
     // see -performUpdateWithCollectionView:fromObjects:toObjects:animated:objectTransitionBlock:completion: for more
     // details on how coalescence is done.
+    /**
+     将本次的 update 加入到主队列中，这样可以保证在一次 runloop 中尽可能收集到更多的 update ，并进行一次处理
+     */
     dispatch_async(dispatch_get_main_queue(), ^{
         if (weakSelf.state != IGListBatchUpdateStateIdle
             || ![weakSelf hasChanges]) {
+            // 批量更新被暂停，并且最终没有更改发生，直接 return ,一般是因为调用了 executeCompletionBlocks 导致
             return;
         }
-        
+        // 如果批量更新的过程中，有一次调用了 reload 全量更新，那么直接使用 reload
         if (weakSelf.hasQueuedReloadData) {
             [weakSelf performReloadDataWithCollectionViewBlock:collectionViewBlock];
         } else {
@@ -480,7 +517,7 @@ static NSUInteger IGListIdentifierHash(const void *item, NSUInteger (*size)(cons
     functions.isEqualFunction = IGListIsEqual;
     return functions;
 }
-
+// 执行真正的 collection view update
 - (void)performUpdateWithCollectionViewBlock:(IGListCollectionViewBlock)collectionViewBlock
                             fromObjects:(NSArray *)fromObjects
                          toObjectsBlock:(IGListToObjectBlock)toObjectsBlock
@@ -496,6 +533,7 @@ static NSUInteger IGListIdentifierHash(const void *item, NSUInteger (*size)(cons
     // will be done on the first "fromObjects" received and the last "toObjects"
     // if performBatchUpdates: hasn't applied the update block, then data source hasn't transitioned its state. if an
     // update is queued in between then we must use the pending toObjects
+    // 如果本次调用之前已经处于 update 过程中，那么还是用之前的 origin bobjects
     self.fromObjects = self.fromObjects ?: self.pendingTransitionToObjects ?: fromObjects;
     self.toObjectsBlock = toObjectsBlock;
 
@@ -508,9 +546,10 @@ static NSUInteger IGListIdentifierHash(const void *item, NSUInteger (*size)(cons
 
     IGListUpdatingCompletion localCompletion = completion;
     if (localCompletion) {
+        // 将本次的 completion 加入，之后真正 update 完成的时候，要调用
         [self.completionBlocks addObject:localCompletion];
     }
-
+    // 加入到 update 的队列中
     [self _queueUpdateWithCollectionViewBlock:collectionViewBlock];
 }
 

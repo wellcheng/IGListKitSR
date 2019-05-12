@@ -52,6 +52,7 @@ final class SearchSectionController: ListSectionController, UISearchBarDelegate,
     // MARK: ListScrollDelegate
 
     func listAdapter(_ listAdapter: ListAdapter, didScroll sectionController: ListSectionController) {
+        // scroll 完成的时候需要进行 search
         if let searchBar = (collectionContext?.cellForItem(at: 0, sectionController: self) as? SearchCell)?.searchBar {
             searchBar.resignFirstResponder()
         }

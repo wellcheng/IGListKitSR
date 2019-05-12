@@ -37,7 +37,7 @@ final class SearchViewController: UIViewController, ListAdapterDataSource, Searc
         return words
     }()
     var filterString = ""
-    let searchToken: NSNumber = 42
+    let searchToken: NSNumber = 42 // 作为 searchVBar 的占位符
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -60,10 +60,12 @@ final class SearchViewController: UIViewController, ListAdapterDataSource, Searc
 
     func listAdapter(_ listAdapter: ListAdapter, sectionControllerFor object: Any) -> ListSectionController {
         if let obj = object as? NSNumber, obj == searchToken {
+            // 显示 searchBar
             let sectionController = SearchSectionController()
             sectionController.delegate = self
             return sectionController
         } else {
+            // 显示 result label
             return LabelSectionController()
         }
     }
@@ -75,6 +77,7 @@ final class SearchViewController: UIViewController, ListAdapterDataSource, Searc
     // MARK: SearchSectionControllerDelegate
 
     func searchSectionController(_ sectionController: SearchSectionController, didChangeText text: String) {
+        // 刷新得到搜索结果
         filterString = text
         adapter.performUpdates(animated: true, completion: nil)
     }

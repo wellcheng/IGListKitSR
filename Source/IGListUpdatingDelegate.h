@@ -66,13 +66,19 @@ NS_SWIFT_NAME(ListUpdatingDelegate)
 
 /**
  Tells the delegate to perform a section transition from an old array of objects to a new one.
-
+ 执行数据源的变化
+ 
  @param collectionViewBlock A block returning the collecion view to perform updates on.
+ 通过 block 得到 collection view
  @param fromObjects The previous objects in the collection view. Objects must conform to `IGListDiffable`.
+ 原来的数据源
  @param toObjectsBlock A block returning the new objects in the collection view. Objects must conform to `IGListDiffable`.
+ 通过 block 得到新的数据源
  @param animated A flag indicating if the transition should be animated.
  @param objectTransitionBlock A block that must be called when the adapter applies changes to the collection view.
+ 在执行change 的地方，调用 block 实现 transition
  @param completion A completion block to execute when the update is finished.
+ 当 update 完成
 
  @note Implementations determine how to transition between objects. You can perform a diff on the objects, reload
  each section, or simply call `-reloadData` on the collection view. In the end, the collection view must be setup with a

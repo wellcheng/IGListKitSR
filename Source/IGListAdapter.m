@@ -340,7 +340,7 @@
 }
 
 #pragma mark - Editing
-
+// 执行一次数据源的更新，会更新 diff 算法决定具体要更新的 item
 - (void)performUpdatesAnimated:(BOOL)animated completion:(IGListUpdaterCompletion)completion {
     IGAssertMainThread();
 
@@ -353,12 +353,13 @@
         }
         return;
     }
-
+    
     NSArray *fromObjects = self.sectionMap.objects;
 
     IGListToObjectBlock toObjectsBlock;
     __weak __typeof__(self) weakSelf = self;
     if (IGListExperimentEnabled(self.experiments, IGListExperimentDeferredToObjectCreation)) {
+        // 将实验 defer 到对象创建阶段
         toObjectsBlock = ^NSArray *{
             __typeof__(self) strongSelf = weakSelf;
             if (strongSelf == nil) {
@@ -369,7 +370,7 @@
     } else {
         NSArray *newObjects = [dataSource objectsForListAdapter:self];
         toObjectsBlock = ^NSArray *{
-            return newObjects;
+            return newObjects; // 直接获取最新的 object， newObjects 已经确定了，调用这个 block 直接得到
         };
     }
 
@@ -382,7 +383,7 @@
                                      // temporarily capture the item map that we are transitioning from in case
                                      // there are any item deletes at the same
                                      weakSelf.previousSectionMap = [weakSelf.sectionMap copy];
-
+                                     // 将 update 之后的数据源更新到 adapter 中，这里直接用到了 diff 去重之后的 object
                                      [weakSelf _updateObjects:toObjects dataSource:dataSource];
                                  } completion:^(BOOL finished) {
                                      // release the previous items
@@ -602,12 +603,14 @@
 
 
 #pragma mark - Private API
-
+// 获取当前的 collectionView
 - (IGListCollectionViewBlock)_collectionViewBlock {
     if (IGListExperimentEnabled(self.experiments, IGListExperimentGetCollectionViewAtUpdate)) {
+        // 延迟获取
         __weak __typeof__(self) weakSelf = self;
         return ^UICollectionView *{ return weakSelf.collectionView; };
     } else {
+        // 直接获取
         __weak UICollectionView *collectionView = _collectionView;
         return ^UICollectionView *{ return collectionView; };
     }
